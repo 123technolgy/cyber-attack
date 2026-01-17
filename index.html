@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>CYBER TERMINAL</title>
+<style>
+  :root{
+    --bg:#000;
+    --text:#86ff73;
+    --meta:#6fb3ff;
+    --panel:#050505;
+  }
+  html,body{height:100%;margin:0;font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, "Courier New", monospace;background:var(--bg);color:var(--text);}
+  .wrap{display:flex;align-items:center;justify-content:center;height:100%;padding:20px;}
+  .terminal{
+    width:100%;max-width:1200px;border-radius:8px;padding:18px;background:linear-gradient(180deg, rgba(255,255,255,0.02), transparent);
+    border:1px solid rgba(255,255,255,0.03);
+    box-shadow:0 20px 60px rgba(0,0,0,0.7);
+  }
+  .screen{
+    background:var(--panel);border-radius:6px;padding:14px;min-height:520px;max-height:72vh;overflow:auto;
+    box-shadow: inset 0 0 60px rgba(0,0,0,0.6);
+    outline: none;
+  }
+  .line{white-space:pre-wrap;word-break:break-word;font-size:14px;line-height:1.5;color:var(--text)}
+  .meta{color:var(--meta);font-size:13px}
+  .controls{display:flex;gap:10px;align-items:center;margin-top:12px}
+  button{background:#071422;border:1px solid rgba(255,255,255,0.03);color:var(--text);padding:8px 12px;border-radius:8px;cursor:pointer}
+  button:hover{filter:brightness(1.05)}
+  .prompt{color:#9feab0}
+  .gibberish{color:var(--text); text-shadow:0 0 6px rgba(134,255,115,0.08)}
+  .screen:focus{box-shadow:0 0 0 3px rgba(134,255,115,0.06), inset 0 0 30px rgba(0,0,0,0.5)}
+  .caret {display:inline-block;width:8px;height:18px;background:var(--text);opacity:0.9;margin-left:6px;animation:blink 900ms steps(1) infinite}
+  @keyframes blink{50%{opacity:0}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="terminal" role="application" aria-label="Terminal Interface">
+    <div class="screen" id="screen" tabindex="0" aria-live="polite"></div>
+
+    <div class="controls" style="margin-top:10px">
+      <button id="clearBtn">Clear</button>
+      <button id="burstBtn">Burst</button>
+      <div class="small" style="margin-left:auto;color:#0f0">ACTIVE SESSION</div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  const screen = document.getElementById('screen');
+  const clearBtn = document.getElementById('clearBtn');
+  const burstBtn = document.getElementById('burstBtn');
+
+  function randInt(min, max){ return Math.floor(Math.random()*(max-min+1))+min; }
+  const hexChars = '0123456789abcdef';
+  const forall = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()-=_+[]{};:,.<>/?|\\~`';
+  const words = ['INIT','SCAN','AUTH','PING','SYNC','PROBE','DECODE','AGGREGATE','STREAM','RECEIVE','HANDSHAKE','PRIVDROP','ENUM','SIGNATURE','HASHCHECK','TRACE','DEPLOY','ROUTE','INVOKE','ACCESS','BIND','BREACH'];
+
+  function randHex(len){
+    let s=''; for(let i=0;i<len;i++) s+=hexChars.charAt(Math.floor(Math.random()*hexChars.length)); return s;
+  }
+  function randGib(len){
+    let s=''; for(let i=0;i<len;i++) s+=forall.charAt(Math.floor(Math.random()*forall.length)); return s;
+  }
+  function randPattern(){
+    const pick = Math.random();
+    if(pick < 0.25) return words[Math.floor(Math.random()*words.length)] + ' ' + randHex(randInt(6,18));
+    if(pick < 0.5)  return '0x' + randHex(randInt(8,24));
+    if(pick < 0.75) return randGib(randInt(20,80));
+    return '>> ' + words[Math.floor(Math.random()*words.length)] + ':' + randInt(100,999999) + ' ' + randHex(randInt(4,12));
+  }
+
+  function typeLine(text, speed=14){
+    return new Promise(resolve => {
+      const el = document.createElement('div');
+      el.className = 'line gibberish';
+      screen.appendChild(el);
+      let i = 0;
+      function step(){
+        if(i >= text.length){
+          resolve(el);
+          screen.scrollTop = screen.scrollHeight;
+          return;
+        }
+        el.textContent += text[i++];
+        screen.scrollTop = screen.scrollHeight;
+        setTimeout(step, speed + Math.random()*speed*0.9);
+      }
+      step();
+    });
+  }
+
+  function appendRaw(text){
+    const el = document.createElement('div');
+    el.className = 'line gibberish';
+    el.textContent = text;
+    screen.appendChild(el);
+    screen.scrollTop = screen.scrollHeight;
+    return el;
+  }
+
+  appendRaw('--- SESSION STARTED ---');
+  appendRaw('system: CYBER-OS v9.8 | terminal: SECURE-LINK');
+  appendRaw('');
+
+  document.addEventListener('keydown', async (ev) => {
+    if(ev.key === 'Tab'){ ev.preventDefault(); screen.focus(); }
+    if(ev.key === 'Shift' || ev.key === 'Control' || ev.key === 'Alt' || ev.key === 'Meta') return;
+
+    ev.preventDefault();
+    screen.focus();
+
+    const prefixPick = Math.random();
+    let out = '';
+    if(prefixPick < 0.18) out = '[' + new Date().toLocaleTimeString() + '] ' + randPattern();
+    else if(prefixPick < 0.35) out = 'root@node:~$ ' + randPattern();
+    else if(prefixPick < 0.6) out = randHex(randInt(10,28)) + ' | ' + randGib(randInt(8,32));
+    else out = randPattern() + ' // ' + randHex(randInt(6,18));
+
+    const speed = /[0-9]/.test(ev.key) ? randInt(6,12) : randInt(8,22);
+
+    await typeLine(out, speed);
+  });
+
+  screen.addEventListener('click', ()=> screen.focus());
+
+  clearBtn.addEventListener('click', ()=>{
+    screen.innerHTML = '';
+    appendRaw('--- SESSION STARTED ---');
+    appendRaw('system: CYBER-OS v9.8 | terminal: SECURE-LINK');
+    appendRaw('');
+    screen.focus();
+  });
+
+  burstBtn.addEventListener('click', async ()=>{
+    burstBtn.disabled = true;
+    for(let i=0;i<12;i++){
+      appendRaw(randPattern() + ' ' + randHex(randInt(6,14)));
+      await new Promise(r => setTimeout(r, 40 + Math.random()*120));
+    }
+    burstBtn.disabled = false;
+    screen.scrollTop = screen.scrollHeight;
+  });
+
+  document.addEventListener('paste', (ev)=>{
+    ev.preventDefault();
+    const p = (ev.clipboardData || window.clipboardData).getData('text');
+    const chunks = Math.max(1, Math.min(6, Math.floor(p.length/40)));
+    for(let i=0;i<chunks;i++){
+      appendRaw(randPattern());
+    }
+  });
+
+  document.addEventListener('keydown', (ev)=>{
+    if((ev.ctrlKey || ev.metaKey) && ev.key.toLowerCase() === 'l'){
+      ev.preventDefault();
+      clearBtn.click();
+    }
+  });
+
+})();
+</script>
+</body>
+</html>
